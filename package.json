@@ -1,0 +1,51 @@
+{
+  "name": "hubspot-revops-playpattern-engine",
+  "version": "1.0.0",
+  "description": "Installable HubSpot app + Breeze Agent that analyzes historical lifecycle data across Leads, Deals, Jobs, Placements, and Contracts. Generates recommendations for each record based on persona, funding stage, service line, and past success patterns. Helps GTM and CS teams replicate top-performing motions and accelerate revenue outcomes.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "hubspot",
+    "revops",
+    "sales",
+    "crm",
+    "patterns",
+    "machine-learning",
+    "recommendations"
+  ],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "@hubspot/api-client": "^11.1.0",
+    "axios": "^1.7.9",
+    "dotenv": "^16.3.1",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.11",
+    "@types/node": "^20.10.5",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
