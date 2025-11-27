@@ -25,7 +25,7 @@ import {
   OAuthTokens,
   PlayRecommendation,
 } from './types';
-import { generateId } from './utils';
+import { generateId, RateLimiter } from './utils';
 
 // Load environment variables
 dotenv.config();
@@ -185,6 +185,9 @@ export function createApp(engine?: PlayPatternEngine): Express {
   const app = express();
   const playEngine = engine || new PlayPatternEngine(process.env.BASE_URL || '');
 
+  // Rate limiter for OAuth callback (10 requests per minute per IP)
+  const oauthRateLimiter = new RateLimiter(10, 60000);
+
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
@@ -202,6 +205,13 @@ export function createApp(engine?: PlayPatternEngine): Express {
 
   app.get('/oauth/callback', async (req: Request, res: Response, next: NextFunction) => {
     try {
+      // Rate limiting to prevent abuse
+      const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+      if (!oauthRateLimiter.isAllowed(clientIp)) {
+        res.status(429).json({ error: 'Too many requests. Please try again later.' });
+        return;
+      }
+
       const code = req.query.code as string;
       if (!code) {
         res.status(400).json({ error: 'Missing authorization code' });

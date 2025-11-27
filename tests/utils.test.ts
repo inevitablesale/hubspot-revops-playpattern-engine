@@ -19,6 +19,7 @@ import {
   flattenObject,
   standardDeviation,
   percentile,
+  RateLimiter,
 } from '../src/utils';
 
 describe('Utility Functions', () => {
@@ -122,6 +123,32 @@ describe('Utility Functions', () => {
       expect(original.b.c).toBe(2);
       expect(cloned.b.c).toBe(3);
     });
+
+    it('should handle Date objects', () => {
+      const original = { date: new Date('2024-01-15') };
+      const cloned = deepClone(original);
+
+      expect(cloned.date).toBeInstanceOf(Date);
+      expect(cloned.date.getTime()).toBe(original.date.getTime());
+
+      // Verify it's a different instance
+      cloned.date.setFullYear(2025);
+      expect(original.date.getFullYear()).toBe(2024);
+    });
+
+    it('should handle arrays', () => {
+      const original = [1, 2, { a: 3 }];
+      const cloned = deepClone(original);
+
+      (cloned[2] as { a: number }).a = 4;
+
+      expect((original[2] as { a: number }).a).toBe(3);
+    });
+
+    it('should handle null and undefined', () => {
+      expect(deepClone(null)).toBe(null);
+      expect(deepClone(undefined)).toBe(undefined);
+    });
   });
 
   describe('calculatePercentage', () => {
@@ -180,6 +207,14 @@ describe('Utility Functions', () => {
 
     it('should remove javascript protocol', () => {
       expect(sanitizeString('javascript:void(0)')).toBe('void(0)');
+    });
+
+    it('should remove data protocol', () => {
+      expect(sanitizeString('data:text/html,<script>alert(1)</script>')).toBe('text/html,scriptalert(1)/script');
+    });
+
+    it('should remove vbscript protocol', () => {
+      expect(sanitizeString('vbscript:msgbox("xss")')).toBe('msgbox("xss")');
     });
 
     it('should trim whitespace', () => {
@@ -252,6 +287,55 @@ describe('Utility Functions', () => {
 
     it('should return 0 for empty array', () => {
       expect(percentile([], 50)).toBe(0);
+    });
+  });
+
+  describe('RateLimiter', () => {
+    it('should allow requests under limit', () => {
+      const limiter = new RateLimiter(5, 60000);
+
+      expect(limiter.isAllowed('client-1')).toBe(true);
+      expect(limiter.isAllowed('client-1')).toBe(true);
+      expect(limiter.isAllowed('client-1')).toBe(true);
+    });
+
+    it('should block requests over limit', () => {
+      const limiter = new RateLimiter(3, 60000);
+
+      expect(limiter.isAllowed('client-1')).toBe(true);
+      expect(limiter.isAllowed('client-1')).toBe(true);
+      expect(limiter.isAllowed('client-1')).toBe(true);
+      expect(limiter.isAllowed('client-1')).toBe(false);
+    });
+
+    it('should track clients independently', () => {
+      const limiter = new RateLimiter(2, 60000);
+
+      expect(limiter.isAllowed('client-1')).toBe(true);
+      expect(limiter.isAllowed('client-1')).toBe(true);
+      expect(limiter.isAllowed('client-1')).toBe(false);
+      expect(limiter.isAllowed('client-2')).toBe(true);
+    });
+
+    it('should return remaining requests', () => {
+      const limiter = new RateLimiter(5, 60000);
+
+      expect(limiter.getRemaining('client-1')).toBe(5);
+      limiter.isAllowed('client-1');
+      limiter.isAllowed('client-1');
+      expect(limiter.getRemaining('client-1')).toBe(3);
+    });
+
+    it('should reset limit for a key', () => {
+      const limiter = new RateLimiter(3, 60000);
+
+      limiter.isAllowed('client-1');
+      limiter.isAllowed('client-1');
+      limiter.isAllowed('client-1');
+      expect(limiter.isAllowed('client-1')).toBe(false);
+
+      limiter.reset('client-1');
+      expect(limiter.isAllowed('client-1')).toBe(true);
     });
   });
 });

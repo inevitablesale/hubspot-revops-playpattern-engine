@@ -105,6 +105,19 @@ export class RoutingEngine {
   private evaluateCondition(record: CRMRecord, condition: PatternCondition): boolean {
     const value = record.properties[condition.field];
 
+    // Handle null/undefined for non-existence checks
+    if (condition.operator === 'exists') {
+      return value !== null && value !== undefined && value !== '';
+    }
+    if (condition.operator === 'notExists') {
+      return value === null || value === undefined || value === '';
+    }
+
+    // For other operators, null/undefined means no match
+    if (value === null || value === undefined) {
+      return false;
+    }
+
     switch (condition.operator) {
       case 'equals':
         return String(value) === String(condition.value);
@@ -118,10 +131,6 @@ export class RoutingEngine {
         return Array.isArray(condition.value) && (condition.value as string[]).includes(String(value));
       case 'notIn':
         return Array.isArray(condition.value) && !(condition.value as string[]).includes(String(value));
-      case 'exists':
-        return value !== null && value !== undefined && value !== '';
-      case 'notExists':
-        return value === null || value === undefined || value === '';
       default:
         return false;
     }

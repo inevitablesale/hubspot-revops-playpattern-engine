@@ -72,14 +72,31 @@ export class SequenceManager {
   }
 
   /**
-   * Identify which sequence steps have been completed for a record
+   * Identify which sequence steps have been completed for a record.
+   * 
+   * Note: This is a placeholder implementation that returns empty completed actions.
+   * In a production environment, integrate with HubSpot's engagement APIs or
+   * implement custom action tracking by:
+   * 1. Fetching record's engagement history from HubSpot
+   * 2. Mapping engagements to action types in the sequence
+   * 3. Returning the order numbers of completed actions
+   * 
+   * Example integration:
+   * ```typescript
+   * const engagements = await hubspotClient.crm.objects.associationsApi.getAll(
+   *   record.objectType, record.id, 'engagements'
+   * );
+   * return sequence
+   *   .filter(s => engagements.some(e => e.type === s.actionType))
+   *   .map(s => s.order);
+   * ```
    */
   private identifyCompletedActions(
     record: CRMRecord,
     sequence: ActionSequence[]
   ): number[] {
-    // In a real implementation, this would check the record's action history
-    // For now, we return an empty array to indicate no actions completed
+    // Placeholder: Returns empty array indicating no actions completed
+    // Override this method or use trackProgress() with actual record actions
     return [];
   }
 

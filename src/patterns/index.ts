@@ -119,29 +119,40 @@ export class PatternMiningEngine {
 
   /**
    * Extract patterns based on properties
+   * Uses frequency threshold to avoid creating candidates for rare values
    */
   private extractPropertyPatterns(
     allData: HistoricalDataPoint[],
     winningRecords: HistoricalDataPoint[]
   ): PatternCandidate[] {
     const candidates: PatternCandidate[] = [];
-    const propertyValues = new Map<string, Set<string>>();
+    const propertyValueCounts = new Map<string, Map<string, number>>();
 
-    // Collect unique property values from winning records
+    // Count property value occurrences to identify frequent values
     for (const record of winningRecords) {
       for (const [key, value] of Object.entries(record.properties)) {
         if (value !== null && value !== undefined) {
-          if (!propertyValues.has(key)) {
-            propertyValues.set(key, new Set());
+          if (!propertyValueCounts.has(key)) {
+            propertyValueCounts.set(key, new Map());
           }
-          propertyValues.get(key)!.add(String(value));
+          const valueStr = String(value);
+          const counts = propertyValueCounts.get(key)!;
+          counts.set(valueStr, (counts.get(valueStr) || 0) + 1);
         }
       }
     }
 
-    // Create candidates for each property/value combination
-    for (const [property, values] of propertyValues) {
-      for (const value of values) {
+    // Only create candidates for values that appear in at least minSampleSize/2 winning records
+    // This prevents excessive memory usage from rare property values
+    const frequencyThreshold = Math.max(2, Math.floor(this.config.minSampleSize / 2));
+
+    for (const [property, valueCounts] of propertyValueCounts) {
+      for (const [value, count] of valueCounts) {
+        // Skip rare values that won't meet the sample size threshold anyway
+        if (count < frequencyThreshold) {
+          continue;
+        }
+
         const condition: PatternCondition = {
           field: property,
           operator: 'equals',

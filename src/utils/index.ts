@@ -57,9 +57,33 @@ export function chunk<T>(arr: T[], size: number): T[][] {
 
 /**
  * Deep clone an object
+ * Note: Handles Date objects properly but not Functions, undefined values, or circular references.
+ * For complex objects with these types, consider using a library like lodash.cloneDeep
  */
 export function deepClone<T>(obj: T): T {
-  return JSON.parse(JSON.stringify(obj));
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+
+  if (obj instanceof Date) {
+    return new Date(obj.getTime()) as unknown as T;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map((item) => deepClone(item)) as unknown as T;
+  }
+
+  if (typeof obj === 'object') {
+    const cloned = {} as T;
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        cloned[key] = deepClone(obj[key]);
+      }
+    }
+    return cloned;
+  }
+
+  return obj;
 }
 
 /**
@@ -95,11 +119,14 @@ export function isValidEmail(email: string): boolean {
 
 /**
  * Sanitize string for safe display
+ * Removes potentially dangerous characters and URL schemes
  */
 export function sanitizeString(str: string): string {
   return str
     .replace(/[<>]/g, '')
     .replace(/javascript:/gi, '')
+    .replace(/data:/gi, '')
+    .replace(/vbscript:/gi, '')
     .trim();
 }
 
@@ -227,4 +254,65 @@ export function flattenObject(
   }
 
   return result;
+}
+
+/**
+ * Simple in-memory rate limiter
+ * For production use, consider using a distributed rate limiter like Redis
+ */
+export class RateLimiter {
+  private requests: Map<string, number[]> = new Map();
+  private readonly maxRequests: number;
+  private readonly windowMs: number;
+
+  constructor(maxRequests: number = 100, windowMs: number = 60000) {
+    this.maxRequests = maxRequests;
+    this.windowMs = windowMs;
+  }
+
+  /**
+   * Check if a request should be allowed
+   * @param key - Unique identifier (e.g., IP address, user ID)
+   * @returns true if request is allowed, false if rate limited
+   */
+  isAllowed(key: string): boolean {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+
+    // Get existing requests for this key
+    let requests = this.requests.get(key) || [];
+
+    // Filter out old requests outside the window
+    requests = requests.filter((timestamp) => timestamp > windowStart);
+
+    // Check if under limit
+    if (requests.length >= this.maxRequests) {
+      this.requests.set(key, requests);
+      return false;
+    }
+
+    // Add current request
+    requests.push(now);
+    this.requests.set(key, requests);
+    return true;
+  }
+
+  /**
+   * Get remaining requests for a key
+   */
+  getRemaining(key: string): number {
+    const now = Date.now();
+    const windowStart = now - this.windowMs;
+    const requests = (this.requests.get(key) || []).filter(
+      (timestamp) => timestamp > windowStart
+    );
+    return Math.max(0, this.maxRequests - requests.length);
+  }
+
+  /**
+   * Clear rate limit data for a key
+   */
+  reset(key: string): void {
+    this.requests.delete(key);
+  }
 }
